@@ -4,14 +4,14 @@ use SyHolloway\MrColor\Color;
 
 class Sedo_ColorsHelper_Helper_PlayWithColors
 {
-	public static function init($color, $cmd = null, $option = null, $extra = false)
+	public static function init($color, $cmd = null, $option = null, $extra = false, $extra2 = false)
 	{
 		$color =str_replace(' ', '', $color);
 		$option = str_replace(' ', '', $option);
 		$cmd = strtolower(str_replace(' ', '', $cmd));
 		$extra = trim($extra);
 
-		$color = self::_checkIfColorName($color);
+		$color = self::checkIfColorName($color);
 
 		//Start Mr Color
 		$color = Color::load($color);
@@ -28,18 +28,35 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		        case '_alpha': return $color->alpha;
 			case 'isLight': return $color->isLight();
 			case 'isDark':	return $color->isDark();
-			case 'darken': return $color->darken($option);
-			case 'lighten': return $color->lighten($option);
 			case 'hex': return $color->getHexString();
 			case 'rgb': return $color->getRgbString();
 			case 'rgba': return $color->getRgbaString();
 			case 'hsl': return $color->getHslString();
 			case 'hsla': return $color->getHslaString();
 			case 'argb': return $color->getArgbHexString();
-			case 'gradient': return self::_createCssGradient($color, $option);
-			case 'calc': return self::_calc($color, $option, $extra);
-			case 'modify': $output = self::_modify($color, $option);break;
-			default: $output = self::_fullOutput($color);
+			case 'gradient': return self::createCssGradient($color, $option, $extra);
+			case 'calc': return self::calc($color, $option, $extra); //not that great. Better use below functions
+			case 'multiply': return self::multiply($color, $option, $extra);
+			case 'screen': return self::screen($color, $option, $extra);
+			case 'overlay': return self::overlay($color, $option, $extra);
+			case 'softlight': return self::softlight($color, $option, $extra);
+			case 'hardlight': return self::hardlight($color, $option, $extra);
+			case 'difference': return self::difference($color, $option, $extra);
+			case 'exclusion': return self::exclusion($color, $option, $extra);
+			case 'average': return self::average($color, $option, $extra);
+			case 'tint': return self::tint($color, $option, $extra);
+			case 'shade': return self::shade($color, $option, $extra);
+			case 'saturate': return self::saturate($color, $option, $extra);
+			case 'desaturate': return self::desaturate($color, $option, $extra);
+			case 'lighten': return self::lighten($color, $option, $extra);
+			case 'darken': return self::darken($color, $option, $extra);
+			case 'fadein': return self::fadein($color, $option, $extra);
+			case 'fadeout': return self::fadeout($color, $option, $extra);
+			case 'fade': return self::fade($color, $option, $extra);
+			case 'spin': return self::spin($color, $option, $extra);
+			case 'mix': return self::mix($color, $option, $extra, $extra2);
+			case 'modify': $output = self::modify($color, $option);break;
+			default: $output = self::fullOutput($color);
 		}
 
 		//$extra is used here as a debug
@@ -69,7 +86,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 	
 	public static $validCmd = array('red', 'green', 'blue', 'hue', 'saturation', 'lightness', 'alpha');
 	
-	protected static function _modify($color, $option)
+	public static function modify($color, $option)
 	{
 		$option = strtolower(str_replace(' ', '', $option));
 		$options = explode(';', $option);
@@ -150,19 +167,19 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		{
 			return $color->hex;
 		}
-		elseif($output)
+		elseif(!empty($output))
 		{
 			$method = self::$validOutput[$output];
 			return $color->$method();
 		}
 		else
 		{
-			return self::_fullOutput($color);
+			return self::fullOutput($color);
 		
 		}
 	}	
 
-	protected static function _fullOutput($color)
+	public static function fullOutput($color)
 	{
 		return array(
 			'_hex' => $color->hex,
@@ -175,8 +192,6 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 			'_alpha' => $color->alpha,
 			'isLight' => $color->isLight(),
 			'isDark' => $color->isDark(),
-			'darken' => $color->darken($option),
-			'lighten' => $color->lighten($option),
 			'hex' => $color->getHexString(),
 			'rgb' => $color->getRgbString(),
 			'rgba' => $color->getRgbaString(),
@@ -186,9 +201,9 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		);	
 	}
 	
-	protected static function _createCssGradient($color, $option)
+	public static function createCssGradient($color, $option, $fallback)
 	{
-		$fallback = $color->getRgbaString();
+		$fallback = ($fallback) ? $fallback : $color->getRgbString();
 		$mode = (preg_match('#^[^\#]\d{1,3}$#', $option)) ? 'singleColor' : 'dualColor';
 		
 		if($mode == 'singleColor')
@@ -222,7 +237,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
        			$lightColor = $firstColor->getRgbaString();
        			$lightColorIE = $firstColor->getArgbHexString();
 
-			$secondColor = self::_checkIfColorName($option);
+			$secondColor = self::checkIfColorName($option);
 			$secondColor = Color::load($secondColor);
 			$darkColor = $secondColor->getRgbaString();
 			$darkColorIE = $secondColor->getArgbHexString();
@@ -240,7 +255,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		return $css;	        
 	}
 	
-	protected static function _calc($color, $option, $output)
+	public static function calc($color, $option, $output)
 	{
 		$output = (isset(self::$validOutput[$output])) ? $output : 'hex';
 
@@ -251,10 +266,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 			$option = substr($option, 1);
 		}
 
-		$color1 = $color->copy();
-
-		$color2 = self::_checkIfColorName($option);
-		$color2 = Color::load($color2);
+		list($color1, $color2) = self::loadOptionAsSecondColor($color, $option);
 
 		switch($operator)
 		{
@@ -285,14 +297,14 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		{
 			return $outputColor->hex;
 		}
-		elseif($output)
+		elseif(!empty($output))
 		{
 			$method = self::$validOutput[$output];
 			return $outputColor->$method();
 		}
 	}
 	
-	protected static function _checkIfColorName($color)
+	public static function checkIfColorName($color)
 	{
 		$colorNames = XenForo_Helper_Color::$colors;
 		if(isset($colorNames[$color]))
@@ -302,4 +314,343 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		
 		return $color;
 	}
+
+	public static function loadOptionAsSecondColor($color, $option)
+	{
+		if($option instanceof Color)
+		{
+			$color1 =  $color;
+			$color2 = $option;
+		}
+		else
+		{
+			$color1 = $color->copy();
+			$color2 = self::checkIfColorName($option);
+			$color2 = Color::load($color2);
+		}
+		
+		return array($color1, $color2);
+	}
+
+	/* Functions taken from Less Script (Converted from JS to PHP)
+	 * Url: http://lesscss.org
+	 *
+	 *  The above functions are copyrighted
+	 *  Copyright (c) 2006-2009 Hampton Catlin, Nathan Weizenbaum, and Chris Eppstein
+    	 *  Url: http://sass-lang.com
+	 **/
+
+	public static function mix($color, $option, $weight, $output)
+	{
+		list($color1, $color2) = self::loadOptionAsSecondColor($color, $option);
+		$weight = (!$weight) ? 50 : $weight;
+
+
+		if($output != 'Color')
+		{
+			$output = (isset(self::$validOutput[$output])) ? $output : 'hex';
+		}
+		
+		$p = $weight / 100;
+		$w = $p * 2 - 1;
+		$a = $color1->alpha - $color2->alpha;
+
+		$w1 = ((($w * $a == -1) ? w : ($w + $a) / (1 + $w * $a)) + 1) / 2.0;
+		$w2 = 1 - $w1;
+		
+		$red = 	$color->red*$w1 + $color2->red*$w2;
+		$green = $color->green*$w1 + $color2->green*$w2;
+		$blue = $color->blue*$w1 + $color2->blue*$w2;
+		$alpha = $color->alpha*$p + $color2->alpha*(1-$p);
+
+		$outputColor = Color::create(array(
+			'red' => $red,
+			'green' => $green,
+			'blue' => $blue,
+			'alpha'=> $alpha
+		));
+
+		if($output == '_hex')
+		{
+			return $outputColor->hex;
+		}
+		elseif($output == 'Color')
+		{
+			return $outputColor;
+		}
+		elseif(!empty($output))
+		{
+			$method = self::$validOutput[$output];
+			return $outputColor->$method();
+		}
+	}
+
+	public static function multiply($color, $option, $output)
+	{
+		return self::_blendingRgb($color, $option, $output, 'multiply');
+	}
+
+	public static function screen($color, $option, $output)
+	{
+		return self::_blendingRgb($color, $option, $output, 'screen');
+	}
+
+	public static function overlay($color, $option, $output)
+	{
+		return self::_blendingRgb($color, $option, $output, 'overlay');
+	}
+
+	public static function softlight($color, $option, $output)
+	{
+		return self::_blendingRgb($color, $option, $output, 'softlight');
+	}
+
+	public static function hardlight($color, $option, $output)
+	{
+		return self::_blendingRgb($color, $option, $output, 'hardlight');
+	}
+
+	public static function difference($color, $option, $output)
+	{
+		return self::_blendingRgb($color, $option, $output, 'difference');
+	}
+
+	public static function exclusion($color, $option, $output)
+	{
+		return self::_blendingRgb($color, $option, $output, 'exclusion');
+	}
+
+	public static function average($color, $option, $output)
+	{
+		return self::_blendingRgb($color, $option, $output, 'average');
+	}
+
+	public static function tint($color, $weight, $output)
+	{
+		$firstColor = Color::create(array(
+			'red' => '255',
+			'green' => '255',
+			'blue' => '255'
+		));
+		
+		return self::mix($firstColor, $color, $weight, $output);
+	}
+
+	public static function shade($color, $weight, $output)
+	{
+		$firstColor = Color::create(array(
+			'red' => '0',
+			'green' => '0',
+			'blue' => '0'
+		));
+		
+		return self::mix($firstColor, $color, $weight, $output);
+	}	
+
+	public static function saturate($color, $amount, $output)
+	{
+		return self::_blendingHsl($color, $amount, $output, 'saturate');
+	}
+
+	public static function desaturate($color, $amount, $output)
+	{
+		return self::_blendingHsl($color, $amount, $output, 'desaturate');
+	}
+
+	public static function lighten($color, $amount, $output)
+	{
+		return self::_blendingHsl($color, $amount, $output, 'lighten');
+	}
+
+	public static function darken($color, $amount, $output)
+	{
+		return self::_blendingHsl($color, $amount, $output, 'darken');
+	}
+
+	public static function fadein($color, $amount, $output)
+	{
+		return self::_blendingHsl($color, $amount, $output, 'fadein');
+	}
+
+	public static function fadeout($color, $amount, $output)
+	{
+		return self::_blendingHsl($color, $amount, $output, 'fadeout');
+	}
+
+	public static function fade($color, $amount, $output)
+	{
+		return self::_blendingHsl($color, $amount, $output, 'fade');
+	}
+
+	public static function spin($color, $amount, $output)
+	{
+		return self::_blendingHsl($color, $amount, $output, 'spin');
+	}
+
+	protected static function _blendingRgb($color, $option, $output, $blendingMode)
+	{
+		list($color1, $color2) = self::loadOptionAsSecondColor($color, $option);
+		$output = (isset(self::$validOutput[$output])) ? $output : 'hex';
+
+		switch($blendingMode)
+		{
+			case 'multiply':
+				$red = 	$color->red * $color2->red / 255;
+				$green = $color->green * $color2->green / 255;
+				$blue = $color->blue * $color2->blue / 255;
+				break;
+			case 'screen':
+			        $red = 255 - (255 - $color1->red) * (255 - $color2->red) / 255;
+			        $green = 255 - (255 - $color1->green) * (255 - $color2->green) / 255;
+			        $blue = 255 - (255 - $color1->blue) * (255 - $color2->blue) / 255;
+				break;
+			case 'overlay':
+			        $red = 	($color1->red < 128) ? 2 * $color1->red * $color2->red / 255 
+			        	: 255 - 2 * (255 - $color1->red) * (255 - $color2->red) / 255;
+			        $green = ($color1->green < 128) ? 2 * $color1->green * $color2->green / 255
+			        	: 255 - 2 * (255 - $color1->green) * (255 - $color2->green) / 255;
+			        $blue = ($color1->blue < 128) ? 2 * $color1->blue * $color2->blue / 255
+			        	: 255 - 2 * (255 - $color1->blue) * (255 - $color2->blue) / 255;
+				break;
+			case 'softlight':
+			        $t = $color2->red * $color1->red / 255;
+			        $red = $t + $color1->red * (255 - (255 - $color1->red) * (255 - $color2->red) / 255 - $t) / 255;
+			        $t = $color2->green * $color1->green / 255;
+			        $green = $t + $color1->green * (255 - (255 - $color1->green) * (255 - $color2->green) / 255 - $t) / 255;
+			        $t = $color2->blue * $color1->blue / 255;
+			        $blue = $t + $color1->blue * (255 - (255 - $color1->blue) * (255 - $color2->blue) / 255 - $t) / 255;
+				break;
+			case 'hardlight':
+			        $red = ($color2->red < 128) ? 2 * $color2->red * $color1->red / 255
+			        	: 255 - 2 * (255 - $color2->red) * (255 - $color1->red) / 255;
+			        $green = ($color2->green < 128) ? 2 * $color2->green * $color1->green / 255
+			        	: 255 - 2 * (255 - $color2->green) * (255 - $color1->green) / 255;
+			        $blue = ($color2->blue < 128) ? 2 * $color2->blue * $color1->blue / 255
+			        	: 255 - 2 * (255 - $color2->blue) * (255 - $color1->blue) / 255;
+				break;
+			case 'difference':
+			        $red = abs($color1->red - $color2->red);
+			        $green = abs($color1->green - $color2->green);
+			        $blue = abs($color1->blue - $color2->blue);
+				break;
+			case 'exclusion':
+			        $red = $color1->red + $color2->red * (255 - $color1->red - $color1->red) / 255;
+			        $green = $color1->green + $color2->green * (255 - $color1->green - $color1->green) / 255;
+			        $blue = $color1->blue + $color2->blue * (255 - $color1->blue - $color1->blue) / 255;
+				break;
+			case 'average':
+			        $red = ($color1->red + $color2->red) / 2;
+			        $green = ($color1->green + $color2->green) / 2;
+			        $blue = ($color1->blue + $color2->blue) / 2;
+				break;
+		}
+
+		$outputColor = Color::create(array(
+			'red' => $red,
+			'green' => $green,
+			'blue' => $blue
+		));
+
+		if($output == '_hex')
+		{
+			return $outputColor->hex;
+		}
+		elseif($output)
+		{
+			$method = self::$validOutput[$output];
+			return $outputColor->$method();
+		}
+	}
+
+	protected static function _blendingHsl($color, $amount, $output, $blendingMode)
+	{
+		$output = (isset(self::$validOutput[$output])) ? $output : 'hex';
+		
+		switch($blendingMode)
+		{
+			case 'saturate':
+				$amount = intval($amount) / 100;
+				$current = $color->saturation;
+			        $current = $current + $amount;
+			        $color->saturation = self::clamp($current, 0, 1);
+			break;
+			case 'desaturate':
+				$amount = intval($amount) / 100;
+				$current = $color->saturation;
+			        $current = $current - $amount;
+			        $color->saturation = self::clamp($current, 0, 1);
+			break;
+			case 'lighten':
+				$color->lighten($amount);
+			break;
+			case 'darken':
+				$color->darken($amount);
+			break;
+			case 'fadein':
+				$amount = intval($amount) / 100;
+				if(!in_array($output, array('rgba', 'hsla')))
+				{
+					$output = 'rgba';
+				}
+							
+				$current = $color->alpha;
+			        $current = $current + $amount;
+			        $color->alpha = self::clamp($current, 0, 1);
+			break;
+			case 'fadeout':
+				$amount = intval($amount) / 100;
+				if(!in_array($output, array('rgba', 'hsla')))
+				{
+					$output = 'rgba';
+				}
+
+				$current = $color->alpha;
+			        $current = $current - $amount;
+			        $color->alpha = self::clamp($current, 0, 1);
+			break;
+			case 'fade':
+				$amount = intval($amount) / 100;
+				if(!in_array($output, array('rgba', 'hsla')))
+				{
+					$output = 'rgba';
+				}
+				
+			        $color->alpha = self::clamp($amount, 0, 1);
+			break;
+			case 'spin':
+			        $hue = ($color->hue + $amount) % 360;
+				$color->hue = hue < 0 ? 360 + $hue : $hue;
+			break;
+		}
+
+		if($output == '_hex')
+		{
+			return $color->hex;
+		}
+		elseif($output)
+		{
+			$method = self::$validOutput[$output];
+			return $color->$method();
+		}
+	}
+	
+	public static function clamp($int, $min = 0, $max = 255)
+	{
+		if(!is_numeric($int))
+		{
+			$int = (int) $int;
+		}
+
+       	        if($int < $min)
+       	        {
+               	        $int = $min;
+               	}
+                	
+                if($int > $max)
+                {
+       	                $int = $max;
+       	        }
+        	                
+		return $int;
+        }
 }
