@@ -60,13 +60,22 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		$option = strtolower(str_replace(' ', '', $option));
 		$options = explode(';', $option);
 		$validCmd = array('red', 'green', 'blue', 'hue', 'saturation', 'lightness', 'alpha');
-		$validOutput = array('_hex', 'hex', 'rgb', 'rgba', 'hsl', 'hsla', 'aarrggbb');
+
+		$validOutput = array(
+			'_hex' 	=> 'hex',
+			'hex' 	=> 'getHexString',
+			'rgb'	=> 'getRgbString',
+			'rgba'	=> 'getRgbaString',
+			'hsl'	=> 'getHslString',
+			'hsla'	=> 'getHslaString',
+			'argb'	=> 'getArgbString'
+		);
 		$output = null;
 
 		foreach($options as $data)
 		{
 			/* Check if an output has been set */
-			if(in_array($data, $validOutput))
+			if(isset($validOutput[$data]))
 			{
 				$output = $data;
 				continue;
@@ -140,7 +149,8 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		}
 		elseif($output)
 		{
-			return $color->$output();
+			$method = $validOutput[$output];
+			return $color->$method();
 		}
 		else
 		{
