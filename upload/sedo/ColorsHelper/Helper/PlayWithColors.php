@@ -4,11 +4,12 @@ use SyHolloway\MrColor\Color;
 
 class Sedo_ColorsHelper_Helper_PlayWithColors
 {
-	public static function init($color, $cmd = null, $option = null, $debug = false)
+	public static function init($color, $cmd = null, $option = null, $extra = false)
 	{
 		$color =str_replace(' ', '', $color);
 		$option = str_replace(' ', '', $option);
 		$cmd = strtolower(str_replace(' ', '', $cmd));
+		$extra = trim($extra);
 
 		$color = self::_checkIfColorName($color);
 
@@ -36,12 +37,13 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 			case 'hsla': return $color->getHslaString();
 			case 'argb': return $color->getArgbHexString();
 			case 'gradient': return self::_createCssGradient($color, $option);
-			case 'calc': return self::_calc2hex($color, $option);
+			case 'calc': return self::_calc($color, $option, $extra);
 			case 'modify': $output = self::_modify($color, $option);break;
 			default: $output = self::_fullOutput($color);
 		}
 
-		if($debug == true && is_array($output))
+		//$extra is used here as a debug
+		if($extra == true && is_array($output))
 		{
 			$string = '';
 			foreach($output as $k => $v)
@@ -55,27 +57,28 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		return $output;
 	}
 	
+	public static $validOutput = array(
+		'_hex' 	=> 'hex',
+		'hex' 	=> 'getHexString',
+		'rgb'	=> 'getRgbString',
+		'rgba'	=> 'getRgbaString',
+		'hsl'	=> 'getHslString',
+		'hsla'	=> 'getHslaString',
+		'argb'	=> 'getArgbString'
+	);
+	
+	public static $validCmd = array('red', 'green', 'blue', 'hue', 'saturation', 'lightness', 'alpha');
+	
 	protected static function _modify($color, $option)
 	{
 		$option = strtolower(str_replace(' ', '', $option));
 		$options = explode(';', $option);
-		$validCmd = array('red', 'green', 'blue', 'hue', 'saturation', 'lightness', 'alpha');
-
-		$validOutput = array(
-			'_hex' 	=> 'hex',
-			'hex' 	=> 'getHexString',
-			'rgb'	=> 'getRgbString',
-			'rgba'	=> 'getRgbaString',
-			'hsl'	=> 'getHslString',
-			'hsla'	=> 'getHslaString',
-			'argb'	=> 'getArgbString'
-		);
 		$output = null;
 
 		foreach($options as $data)
 		{
 			/* Check if an output has been set */
-			if(isset($validOutput[$data]))
+			if(isset(self::$validOutput[$data]))
 			{
 				$output = $data;
 				continue;
@@ -92,7 +95,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 			/* Search for command */
 			$cmd = substr($data, 0, $pos);
 
-			$key = array_search($cmd, $validCmd);
+			$key = array_search($cmd, self::$validCmd);
 			if( $key === false)
 			{
 				continue;
@@ -149,7 +152,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		}
 		elseif($output)
 		{
-			$method = $validOutput[$output];
+			$method = self::$validOutput[$output];
 			return $color->$method();
 		}
 		else
@@ -237,29 +240,56 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		return $css;	        
 	}
 	
-	protected static function _calc2hex($color, $option)
+	protected static function _calc($color, $option, $output)
 	{
-		$color1 = $color->hex;
+		$output = (isset(self::$validOutput[$output])) ? $output : 'hex';
 
 		$operator = '+';
-		if(in_array($option[0], array('+', '-')))
+		if(in_array($option[0], array('+', '-', '|')))
 		{
 			$operator = $option[0];
 			$option = substr($option, 1);
 		}
 
+		$color1 = $color->copy();
+
 		$color2 = self::_checkIfColorName($option);
 		$color2 = Color::load($color2);
-		$color2 = $color2->hex;
 
 		switch($operator)
 		{
-			case '-': $newColor = dechex(hexdec($color) - hexdec($color2)); break;
-			default:
-				$newColor = dechex(hexdec($color) + hexdec($color2)); break;	
+			case '|': 	$red = (($color->red+$color2->red)/2);
+					$green = (($color->green+$color2->green)/2);
+					$blue = (($color->blue+$color2->blue)/2);
+					$alpha = (($color->alpha+$color2->alpha)/2);
+					
+					$outputColor = Color::create(array(
+						'red' => $red,
+						'green' => $green,
+						'blue' => $blue,
+						'alpha'=> $alpha
+					));
+
+					break;
+			case '-': 	$newColor = dechex(hexdec($color1->hex) - hexdec($color2->hex)); 
+					break;
+			default:	$newColor = dechex(hexdec($color1->hex) + hexdec($color2->hex));
 		}
-		
-		return "#{$newColor}";
+
+		if(empty($outputColor))
+		{
+			$outputColor = Color::load($newColor);
+		}
+
+		if($output == '_hex')
+		{
+			return $outputColor->hex;
+		}
+		elseif($output)
+		{
+			$method = self::$validOutput[$output];
+			return $outputColor->$method();
+		}
 	}
 	
 	protected static function _checkIfColorName($color)
