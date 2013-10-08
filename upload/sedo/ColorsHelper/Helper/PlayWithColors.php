@@ -186,7 +186,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 	protected static function _createCssGradient($color, $option)
 	{
 		$fallback = $color->getRgbaString();
-		$mode = (preg_match('#\d{1,3}#', $option)) ? 'singleColor' : 'dualColor';
+		$mode = (preg_match('#^[^\#]\d{1,3}$#', $option)) ? 'singleColor' : 'dualColor';
 		
 		if($mode == 'singleColor')
 		{
