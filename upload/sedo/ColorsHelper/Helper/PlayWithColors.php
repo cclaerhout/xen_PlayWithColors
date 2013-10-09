@@ -74,6 +74,8 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		return $output;
 	}
 	
+	public static $validChannels = array('red', 'green', 'blue', 'hue', 'saturation', 'lightness', 'alpha');
+
 	public static $validOutput = array(
 		'_hex' 	=> 'hex',
 		'hex' 	=> 'getHexString',
@@ -84,7 +86,91 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		'argb'	=> 'getArgbString'
 	);
 	
-	public static $validCmd = array('red', 'green', 'blue', 'hue', 'saturation', 'lightness', 'alpha');
+	public static $channelMax = array(
+		'red' => 255,
+		'green' => 255,
+		'blue'=> 255,
+		'alpha' => 1,
+		'hue' => 360, //not 239..
+		'saturation' => 1,//do not put 240 here... I don't know why
+		'lightness' => 1
+	);
+
+	public static function clamp($int, $channel, $min = 0, $max = 255)
+	{
+		if(array_search($channel, self::$validChannels) !== false)
+		{
+			$min = 0;
+			$max = self::$channelMax[$channel];
+		}
+		
+		if(!is_numeric($int))
+		{
+			$int = (int) $int;
+		}
+
+       	        if($int < $min)
+       	        {
+               	        $int = $min;
+               	}
+                	
+                if($int > $max)
+                {
+       	                $int = $max;
+       	        }
+        	                
+		return $int;
+        }
+
+	public static function fullOutput($color)
+	{
+		return array(
+			'_hex' => $color->hex,
+			'_red' => $color->red,
+			'_green' => $color->green,
+			'_blue' => $color->blue,
+			'_hue' => $color->hue,
+			'_saturation' => $color->saturation,
+			'_lightness' => $color->lightness,
+			'_alpha' => $color->alpha,
+			'isLight' => $color->isLight(),
+			'isDark' => $color->isDark(),
+			'hex' => $color->getHexString(),
+			'rgb' => $color->getRgbString(),
+			'rgba' => $color->getRgbaString(),
+			'hsl' => $color->getHslString(),
+			'hsla' => $color->getHslaString(),
+			'argb' => $color->getArgbHexString()
+		);	
+	}
+
+	public static function checkIfColorName($color)
+	{
+		$colorNames = XenForo_Helper_Color::$colors;
+		if(isset($colorNames[$color]))
+		{
+			$color = $colorNames[$color];
+		}
+		
+		return $color;
+	}
+
+	public static function loadOptionAsSecondColor($color, $option)
+	{
+		if($option instanceof Color)
+		{
+			$color1 =  $color;
+			$color2 = $option;
+		}
+		else
+		{
+			$color1 = $color->copy();
+			$color2 = self::checkIfColorName($option);
+			$color2 = Color::load($color2);
+		}
+		
+		return array($color1, $color2);
+	}
 	
 	public static function modify($color, $option)
 	{
@@ -110,9 +196,9 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 			}
 			
 			/* Search for command */
-			$cmd = substr($data, 0, $pos);
+			$channel = substr($data, 0, $pos);
 
-			$key = array_search($cmd, self::$validCmd);
+			$key = array_search($channel, self::$validChannels);
 			if( $key === false)
 			{
 				continue;
@@ -136,30 +222,17 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 			}
 
 			/* Proceed */
+			$currentValue = $color->$channel;
 			switch($operator)
 			{
 				case '+':
-					if($color->$cmd + $value > 255)
-					{
-						$color->$cmd = 255;
-					}
-					else
-					{
-						$color->$cmd += $value;					
-					}
+					$color->$channel = self::clamp($currentValue + $value, $channel);
 					continue;
 				case '-':
-					if($color->$cmd - $value < 0)
-					{
-						$color->$cm = 0;
-					}
-					else
-					{
-						$color->$cmd -= $value;					
-					}
+					$color->$channel = self::clamp($currentValue - $value, $channel);
 					continue;
 				default:
-					$color->$cmd = $value;
+					$color->$channel = self::clamp($value, $channel);
 			}
 		}
 
@@ -178,28 +251,6 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		
 		}
 	}	
-
-	public static function fullOutput($color)
-	{
-		return array(
-			'_hex' => $color->hex,
-			'_red' => $color->red,
-			'_green' => $color->green,
-			'_blue' => $color->blue,
-			'_hue' => $color->hue,
-			'_saturation' => $color->saturation,
-			'_lightness' => $color->lightness,
-			'_alpha' => $color->alpha,
-			'isLight' => $color->isLight(),
-			'isDark' => $color->isDark(),
-			'hex' => $color->getHexString(),
-			'rgb' => $color->getRgbString(),
-			'rgba' => $color->getRgbaString(),
-			'hsl' => $color->getHslString(),
-			'hsla' => $color->getHslaString(),
-			'argb' => $color->getArgbHexString()
-		);	
-	}
 	
 	public static function createCssGradient($color, $option, $fallback)
 	{
@@ -304,33 +355,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		}
 	}
 	
-	public static function checkIfColorName($color)
-	{
-		$colorNames = XenForo_Helper_Color::$colors;
-		if(isset($colorNames[$color]))
-		{
-			$color = $colorNames[$color];
-		}
-		
-		return $color;
-	}
 
-	public static function loadOptionAsSecondColor($color, $option)
-	{
-		if($option instanceof Color)
-		{
-			$color1 =  $color;
-			$color2 = $option;
-		}
-		else
-		{
-			$color1 = $color->copy();
-			$color2 = self::checkIfColorName($option);
-			$color2 = Color::load($color2);
-		}
-		
-		return array($color1, $color2);
-	}
 
 	/* Functions taken from Less Script (Converted from JS to PHP)
 	 * Url: http://lesscss.org
@@ -570,15 +595,11 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 		{
 			case 'saturate':
 				$amount = intval($amount) / 100;
-				$current = $color->saturation;
-			        $current = $current + $amount;
-			        $color->saturation = self::clamp($current, 0, 1);
+				$color->saturation = self::clamp($color->saturation + $amount, 'saturation');
 			break;
 			case 'desaturate':
 				$amount = intval($amount) / 100;
-				$current = $color->saturation;
-			        $current = $current - $amount;
-			        $color->saturation = self::clamp($current, 0, 1);
+				$color->saturation = self::clamp($color->saturation - $amount, 'saturation');
 			break;
 			case 'lighten':
 				$color->lighten($amount);
@@ -593,9 +614,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 					$output = 'rgba';
 				}
 							
-				$current = $color->alpha;
-			        $current = $current + $amount;
-			        $color->alpha = self::clamp($current, 0, 1);
+			        $color->alpha = self::clamp($color->alpha + $amount, 'alpha');;
 			break;
 			case 'fadeout':
 				$amount = intval($amount) / 100;
@@ -604,9 +623,7 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 					$output = 'rgba';
 				}
 
-				$current = $color->alpha;
-			        $current = $current - $amount;
-			        $color->alpha = self::clamp($current, 0, 1);
+			        $color->alpha = self::clamp($color->alpha - $amount, 'alpha');;
 			break;
 			case 'fade':
 				$amount = intval($amount) / 100;
@@ -615,11 +632,12 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 					$output = 'rgba';
 				}
 				
-			        $color->alpha = self::clamp($amount, 0, 1);
+			        $color->alpha = self::clamp($amount, 'alpha');
 			break;
 			case 'spin':
 			        $hue = ($color->hue + $amount) % 360;
-				$color->hue = hue < 0 ? 360 + $hue : $hue;
+				$new = $hue < 0 ? 360 + $hue : $hue;
+				$color->hue = self::clamp($color->hue + $amount, 'hue');
 			break;
 		}
 
@@ -633,24 +651,4 @@ class Sedo_ColorsHelper_Helper_PlayWithColors
 			return $color->$method();
 		}
 	}
-	
-	public static function clamp($int, $min = 0, $max = 255)
-	{
-		if(!is_numeric($int))
-		{
-			$int = (int) $int;
-		}
-
-       	        if($int < $min)
-       	        {
-               	        $int = $min;
-               	}
-                	
-                if($int > $max)
-                {
-       	                $int = $max;
-       	        }
-        	                
-		return $int;
-        }
 }
